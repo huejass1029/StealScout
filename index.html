@@ -367,7 +367,7 @@ async function load() {
 
           if (score >= 55) {
             alertList.push({
-              runner: batter.fullName, runnerSB: runner.sb, runnerSBPct: runner.sbPct,
+              runner: batter.fullName, runnerSB: runner.sb, runnerCS: runner.cs, runnerSBPct: runner.sbPct, gameTime: game.time,
               pitcher: pitcher.name, pitcherHand: pitcher.info.hand,
               pitcherSBAllowed: pitcher.info.sbAllowed, pitcherCSRate: pitcher.info.csRate, pitcherCSForced: pitcher.info.csForced,
               catcher: catcherInfo.name, catcherCS: catcherInfo.cs, catcherSB: catcherInfo.sb,
@@ -403,16 +403,19 @@ async function load() {
             <div class="score-circle" style="border-color:${color};color:${color}">${a.score}</div>
             <div class="alert-title-wrap">
               <div class="alert-title">
-                ${a.runner} <span class="alert-vs">vs</span> ${a.pitcher} ${handBadge(a.pitcherHand)}
+                ${a.runner} <span style="color:#444;font-size:11px;font-weight:400">(${a.runnerTeam})</span> <span class="alert-vs">vs</span> ${a.pitcher} <span style="color:#444;font-size:11px;font-weight:400">(${a.pitcherTeam})</span> ${handBadge(a.pitcherHand)}
               </div>
-              <div style="font-size:11px;color:#666;margin-top:2px">▼ ${a.catcher}</div>
+              <div style="font-size:11px;color:#555;margin-top:3px">▼ ${a.catcher}</div>
             </div>
-            <div class="alert-label" style="border-color:${color}55;color:${color}">${label}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+              <div class="alert-label" style="border-color:${color}55;color:${color}">${label}</div>
+              <div style="font-size:10px;color:#444;letter-spacing:0.5px">${a.gameTime}</div>
+            </div>
           </div>
           <div class="alert-stats">
             <div class="stat-box">
               <div class="stat-label">Runner SB</div>
-              <div class="stat-value">${a.runnerSB} steals</div>
+              <div class="stat-value">${a.runnerSB}/${a.runnerSB + (a.runnerCS||0)}</div>
               <div class="stat-sub">${Math.round(a.runnerSBPct*100)}% success rate</div>
             </div>
             <div class="stat-box">

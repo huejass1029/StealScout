@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>StealScout</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f2f2f7;color:#1a1a1a;font-family:'Inter',sans-serif;min-height:100vh}
+
+  #header{border-bottom:1px solid #e0e0e6;padding:16px 20px;display:flex;align-items:center;gap:12px;background:#fff;position:sticky;top:0;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  #logo{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:4px;color:#1a1a1a}
+  #logo span{color:#00a651}
+  .badge{background:rgba(0,166,81,0.1);border:1px solid rgba(0,166,81,0.3);color:#00a651;font-size:9px;font-weight:700;letter-spacing:2px;padding:3px 9px;border-radius:4px}
+  #date-chip{margin-left:auto;font-size:10px;color:#888;font-weight:500;text-align:right;line-height:1.5}
+  #refresh-btn{background:#f2f2f7;border:1px solid #ddd;color:#555;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  #refresh-btn:active{background:#e5e5ea}
+
+  #main{padding:20px 16px;max-width:700px;margin:0 auto}
+
+  #loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px 20px;gap:16px}
+  .spinner{width:28px;height:28px;border:2px solid #ddd;border-top:2px solid #00a651;border-radius:50%;animation:spin 0.7s linear infinite}
+  #load-text{font-size:11px;color:#aaa;font-weight:600;letter-spacing:1px;animation:pulse 1.4s ease-in-out infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  .warn{background:#fffbea;border:1px solid #f0d060;border-radius:8px;padding:10px 14px;font-size:12px;color:#8a6d00;margin-bottom:16px;font-weight:500}
+  .sec-title{font-size:11px;letter-spacing:2px;color:#aaa;font-weight:700;margin-bottom:12px;text-transform:uppercase}
+
+  /* Alert cards */
+  #alerts{margin-bottom:28px}
+  .alert-card{border-radius:14px;border:1px solid;padding:16px;margin-bottom:10px;animation:fadeUp 0.3s ease both;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+  .alert-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .score-circle{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0;border:2.5px solid}
+  .alert-title-wrap{flex:1;min-width:0}
+  .alert-title{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.3;color:#1a1a1a}
+  .alert-vs{color:#aaa;font-weight:400;font-size:13px}
+  .hand-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px}
+  .rhp{background:rgba(220,50,50,0.1);color:#cc2200}
+  .lhp{background:rgba(0,100,220,0.1);color:#0055cc}
+
+  /* Stats grid */
+  .alert-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat-box{background:#f7f7fa;border:1px solid #e8e8ee;border-radius:10px;padding:10px 12px}
+  .stat-label{font-size:9px;letter-spacing:1px;color:#888;margin-bottom:5px;text-transform:uppercase;font-weight:700}
+  .stat-value{font-size:15px;font-weight:800;color:#1a1a1a}
+  .stat-sub{font-size:10px;color:#888;margin-top:3px;font-weight:500}
+
+  .empty{padding:32px 16px;text-align:center;color:#bbb;font-size:12px;font-weight:500;background:#fff;border:1px solid #e8e8ee;border-radius:12px}
+
+  .card{background:#fff;border:1px solid #e8e8ee;border-radius:14px;overflow:hidden;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+  .card-header{padding:12px 16px;border-bottom:1px solid #f0f0f4;font-size:10px;letter-spacing:1.5px;color:#aaa;font-weight:700;text-transform:uppercase;background:#fafafa}
+
+  .game-row{padding:13px 16px;border-bottom:1px solid #f0f0f4;display:flex;align-items:center;gap:8px}
+  .game-row:last-child{border-bottom:none}
+  .game-teams{flex:1}
+  .game-matchup{font-size:13px;font-weight:700;margin-bottom:3px;color:#1a1a1a}
+  .game-pitchers{font-size:11px;color:#888;font-weight:500;margin-bottom:4px}
+  .game-time{font-size:11px;color:#aaa;text-align:right;flex-shrink:0;font-weight:500}
+  .lineup-status{font-size:10px;margin-top:2px;display:flex;gap:10px}
+  .lineup-yes{color:#00a651;font-weight:700}
+  .lineup-no{color:#ccc;font-weight:500}
+
+  .pitcher-row{padding:12px 16px;border-bottom:1px solid #f0f0f4;display:flex;align-items:center;gap:10px}
+  .pitcher-row:last-child{border-bottom:none}
+  .pitcher-rank{font-size:11px;color:#ccc;width:18px;text-align:center;flex-shrink:0;font-weight:700}
+  .pitcher-info{flex:1;min-width:0}
+  .pitcher-name{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:#1a1a1a}
+  .pitcher-team{font-size:11px;color:#888;font-weight:500}
+  .pitcher-score-wrap{text-align:right;flex-shrink:0}
+  .pitcher-score{font-size:15px;font-weight:800;margin-bottom:5px}
+  .bar{height:3px;border-radius:2px;background:#f0f0f4;width:60px;margin-left:auto}
+  .bar-fill{height:3px;border-radius:2px}
+  .pitcher-stats{font-size:10px;color:#aaa;margin-top:4px;font-weight:500}
+
+  #foot{margin-top:20px;font-size:9px;color:#ccc;letter-spacing:0.5px;text-align:center;padding-bottom:32px;font-weight:500}
+
+  /* Search bar */
+  #search-bar{background:#fff;border-bottom:1px solid #e8e8ee;padding:10px 16px;position:sticky;top:57px;z-index:98}
+  #search-wrap{display:flex;align-items:center;background:#f2f2f7;border:1px solid #e0e0e6;border-radius:10px;padding:8px 12px;gap:8px}
+  #search-icon{font-size:16px;color:#aaa;flex-shrink:0;line-height:1}
+  #search-input{flex:1;border:none;background:transparent;font-size:14px;font-family:'Inter',sans-serif;color:#1a1a1a;font-weight:500;outline:none}
+  #search-input::placeholder{color:#bbb;font-weight:400}
+  #search-clear{background:none;border:none;color:#aaa;font-size:14px;cursor:pointer;padding:0;font-family:inherit;flex-shrink:0;line-height:1}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="logo">STEAL<span>SCOUT</span></div>
+  <div class="badge">PREGAME</div>
+  <div id="date-chip"></div>
+  <button id="refresh-btn" onclick="load()">↻ REFRESH</button>
+</div>
+
+<div id="search-bar">
+  <div id="search-wrap">
+    <span id="search-icon">⌕</span>
+    <input id="search-input" type="text" placeholder="Search pitcher or batter..." oninput="filterAll(this.value)" autocomplete="off" autocorrect="off" spellcheck="false"/>
+    <button id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="loader">
+    <div class="spinner"></div>
+    <div id="load-text">LOADING...</div>
+  </div>
+  <div id="content" style="display:none">
+    <div id="warn-box" style="display:none" class="warn"></div>
+    <div class="sec-title">🔥 Pregame Steal Opportunities</div>
+    <div id="alerts"></div>
+    <div class="card">
+      <div class="card-header">TODAY'S GAMES — PROBABLE PITCHERS</div>
+      <div id="games-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">PITCHER VULNERABILITY — TODAY'S STARTERS</div>
+      <div id="pitcher-list"></div>
+    </div>
+    <div id="foot">MLB STATS API · SB RATE 25% · PITCHER CS 20% · RUNNER SB% 20% · MATCHUP OBP 15% · HANDEDNESS 10% · CATCHER CS 10%</div>
+  </div>
+</div>
+
+<script>
+const MLB = "https://statsapi.mlb.com/api/v1";
+
+// ── Search / filter ───────────────────────────────────────────────────────
+function normOBP(v) {
+  if (v == null) return null;
+  const c = Math.min(Math.max(v, 0.270), 0.400);
+  return Math.round(((c - 0.270) / 0.130) * 100);
+}
+
+function toggleOBP(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + "-arrow");
+  if (!el) return;
+  const open = el.style.display !== "none";
+  el.style.display = open ? "none" : "block";
+  if (arrow) arrow.textContent = open ? "▸" : "▾";
+}
+  const q = query.trim().toLowerCase();
+  document.getElementById("search-clear").style.display = q ? "block" : "none";
+
+  // Filter alert cards
+  document.querySelectorAll(".alert-card").forEach(card => {
+    const text = card.getAttribute("data-search") || "";
+    card.style.display = !q || text.includes(q) ? "" : "none";
+  });
+
+  // Filter pitcher rows
+  document.querySelectorAll(".pitcher-row").forEach(row => {
+    const text = row.getAttribute("data-search") || "";
+    row.style.display = !q || text.includes(q) ? "" : "none";
+  });
+}
+
+function clearSearch() {
+  const input = document.getElementById("search-input");
+  input.value = "";
+  filterAll("");
+  input.focus();
+}
+
+// ── Score formula ─────────────────────────────────────────────────────────
+// Pitcher SB rate: 30%, Pitcher CS rate: 25%, Runner SB%: 25%, Handedness: 10%, Catcher CS%: 10%
+function calcMatchupOBP(pitcherOBPvsBatterHand, batterOBPvsPitcherHand, careerOBP, careerPA) {
+  const norm = (v, mn, mx) => {
+    if (v == null) return 50;
+    const c = Math.min(Math.max(v, mn), mx);
+    return ((c - mn) / (mx - mn)) * 100;
+  };
+
+  // Sample size dampener for career H2H
+  let careerWeight = 0;
+  if (careerPA >= 20)     careerWeight = 0.30;
+  else if (careerPA >= 10) careerWeight = 0.20;
+  else if (careerPA >= 5)  careerWeight = 0.10;
+  else                     careerWeight = 0;
+
+  const splitWeight = (1 - careerWeight) / 2; // splits share the rest equally
+
+  const p = norm(pitcherOBPvsBatterHand, 0.270, 0.400);
+  const b = norm(batterOBPvsPitcherHand, 0.270, 0.400);
+  const h = norm(careerOBP, 0.270, 0.400);
+
+  return Math.round(p * splitWeight + b * splitWeight + h * careerWeight);
+}
+
+function calcScore({sbRate, pitcherCSRate, runnerSBPct, isRHP, catcherCSPct, matchupOBP}) {
+  const norm = (v, mn, mx, inv=false) => {
+    if (v == null) return 50;
+    const c = Math.min(Math.max(v, mn), mx);
+    const s = ((c - mn) / (mx - mn)) * 100;
+    return inv ? 100 - s : s;
+  };
+  return Math.round(
+    norm(sbRate, 0, 2.5)              * 0.25 +
+    norm(pitcherCSRate, 0, 0.5, true) * 0.20 +
+    norm(runnerSBPct, 0.4, 1.0)       * 0.20 +
+    (matchupOBP ?? 50)                * 0.15 +
+    (isRHP == null ? 50 : isRHP ? 80 : 20) * 0.10 +
+    norm(catcherCSPct, 0, 0.5, true)  * 0.10
+  );
+}
+
+function scoreStyle(score) {
+  if (score >= 75) return {label:"PRIME",     color:"#00a651", bg:"rgba(0,166,81,0.06)"};
+  if (score >= 55) return {label:"FAVORABLE", color:"#d97700", bg:"rgba(217,119,0,0.06)"};
+  return               {label:"NEUTRAL",   color:"#aaa",    bg:"rgba(0,0,0,0.02)"};
+}
+
+// ── API ───────────────────────────────────────────────────────────────────
+async function fetchGames() {
+  const d = new Date().toISOString().split("T")[0];
+  const r = await fetch(`${MLB}/schedule?sportId=1&date=${d}&hydrate=lineups,probablePitcher(note),team`);
+  const j = await r.json();
+  return j.dates?.[0]?.games || [];
+}
+
+async function fetchPitcher(id) {
+  try {
+    const [sr, br, splitsr] = await Promise.all([
+      fetch(`${MLB}/people/${id}/stats?stats=season&group=pitching&season=2025`),
+      fetch(`${MLB}/people/${id}`),
+      fetch(`${MLB}/people/${id}/stats?stats=statSplits&group=pitching&season=2025&sitCodes=vl,vr`)
+    ]);
+    const sd = await sr.json(), bd = await br.json(), spd = await splitsr.json();
+    const s = sd.stats?.[0]?.splits?.[0]?.stat;
+    const hand = bd.people?.[0]?.pitchHand?.code;
+
+    // Extract OBP allowed vs LHB and RHB from splits
+    const splits = spd.stats?.[0]?.splits || [];
+    const vsL = splits.find(sp => sp.split?.code === "vl")?.stat;
+    const vsR = splits.find(sp => sp.split?.code === "vr")?.stat;
+    const obpVsL = vsL?.obp ? parseFloat(vsL.obp) : null;
+    const obpVsR = vsR?.obp ? parseFloat(vsR.obp) : null;
+
+    if (!s) return {hand, isRHP: hand==="R", obpVsL, obpVsR};
+    const sb = parseInt(s.stolenBases||0), cs = parseInt(s.caughtStealing||0);
+    const ip = parseFloat(s.inningsPitched||1), tot = sb+cs;
+    return {
+      sbAllowed:sb, csForced:cs, ip,
+      sbRate: sb/Math.max(ip/9,1),
+      csRate: tot>0?cs/tot:0,
+      obpVsL, obpVsR,
+      hand, isRHP: hand==="R"
+    };
+  } catch { return null; }
+}
+
+async function fetchCatcher(id) {
+  try {
+    const [sr, br] = await Promise.all([
+      fetch(`${MLB}/people/${id}/stats?stats=season&group=catching&season=2025`),
+      fetch(`${MLB}/people/${id}`)
+    ]);
+    const sd = await sr.json(), bd = await br.json();
+    const s = sd.stats?.[0]?.splits?.[0]?.stat;
+    const name = bd.people?.[0]?.fullName || "Unknown";
+    if (!s) return {name, csPct: null, sb:0, cs:0};
+    const sb = parseInt(s.stolenBases||0), cs = parseInt(s.caughtStealing||0), tot = sb+cs;
+    return {name, sb, cs, csPct: tot>0 ? cs/tot : null};
+  } catch { return null; }
+}
+
+async function fetchRunner(id) {
+  try {
+    const [sr, br, splitsr] = await Promise.all([
+      fetch(`${MLB}/people/${id}/stats?stats=season&group=hitting&season=2025`),
+      fetch(`${MLB}/people/${id}`),
+      fetch(`${MLB}/people/${id}/stats?stats=statSplits&group=hitting&season=2025&sitCodes=vl,vr`)
+    ]);
+    const sd = await sr.json(), bd = await br.json(), spd = await splitsr.json();
+    const s = sd.stats?.[0]?.splits?.[0]?.stat;
+    const batHand = bd.people?.[0]?.batSide?.code; // "L", "R", or "S" (switch)
+
+    // OBP vs LHP and RHP
+    const splits = spd.stats?.[0]?.splits || [];
+    const vsL = splits.find(sp => sp.split?.code === "vl")?.stat;
+    const vsR = splits.find(sp => sp.split?.code === "vr")?.stat;
+    const obpVsL = vsL?.obp ? parseFloat(vsL.obp) : null;
+    const obpVsR = vsR?.obp ? parseFloat(vsR.obp) : null;
+
+    if (!s) return null;
+    const sb = parseInt(s.stolenBases||0), cs = parseInt(s.caughtStealing||0), tot = sb+cs;
+    return {sb, cs, sbPct: tot>0?sb/tot:0.5, batHand, obpVsL, obpVsR};
+  } catch { return null; }
+}
+
+async function fetchCareerH2H(batterId, pitcherId) {
+  try {
+    const r = await fetch(`${MLB}/people/${batterId}/stats?stats=vsPlayer&group=hitting&opposingPlayerId=${pitcherId}`);
+    const d = await r.json();
+    const s = d.stats?.[0]?.splits?.[0]?.stat;
+    if (!s) return {obp: null, pa: 0, ab: 0, bb: 0};
+    return {
+      obp: s.obp ? parseFloat(s.obp) : null,
+      pa: parseInt(s.plateAppearances || 0),
+      ab: parseInt(s.atBats || 0),
+      bb: parseInt(s.baseOnBalls || 0),
+      hits: parseInt(s.hits || 0),
+    };
+  } catch { return {obp: null, pa: 0, ab: 0, bb: 0, hits: 0}; }
+}
+// The lineup contains players with position info
+async function findStartingCatcher(players) {
+  if (!players?.length) return null;
+  // Try to find catcher by position in lineup data
+  for (const p of players) {
+    if (p.position?.abbreviation === "C" || p.position?.code === "2") {
+      return p.id;
+    }
+  }
+  // Fallback: fetch each player's primary position until we find C
+  for (const p of players.slice(0, 9)) {
+    try {
+      const r = await fetch(`${MLB}/people/${p.id}`);
+      const d = await r.json();
+      const pos = d.people?.[0]?.primaryPosition?.abbreviation;
+      if (pos === "C") return p.id;
+    } catch {}
+  }
+  return null;
+}
+
+function handBadge(hand) {
+  if (!hand) return "";
+  return `<span class="hand-badge ${hand==="R"?"rhp":"lhp"}">${hand}HP</span>`;
+}
+
+function setProgress(msg) {
+  document.getElementById("load-text").textContent = msg.toUpperCase();
+}
+
+function showWarn(msg) {
+  const el = document.getElementById("warn-box");
+  el.textContent = "⚠ " + msg;
+  el.style.display = "block";
+}
+
+function renderEmpty(id, msg) {
+  document.getElementById(id).innerHTML = `<div class="empty">${msg}</div>`;
+}
+
+function finish() {
+  document.getElementById("loader").style.display = "none";
+  document.getElementById("content").style.display = "block";
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────
+async function load() {
+  document.getElementById("loader").style.display = "flex";
+  document.getElementById("content").style.display = "none";
+  document.getElementById("warn-box").style.display = "none";
+  document.getElementById("alerts").innerHTML = "";
+  document.getElementById("games-list").innerHTML = "";
+  document.getElementById("pitcher-list").innerHTML = "";
+
+  const today = new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  document.getElementById("date-chip").innerHTML = today.toUpperCase().replace(", ","<br/>");
+
+  try {
+    setProgress("Fetching today's schedule...");
+    const rawGames = await fetchGames();
+
+    if (!rawGames.length) {
+      renderEmpty("games-list","No games scheduled today.");
+      renderEmpty("alerts","No games today.");
+      finish(); return;
+    }
+
+    const games = rawGames.map(g => {
+      const awayPlayers = g.lineups?.awayPlayers || [];
+      const homePlayers = g.lineups?.homePlayers || [];
+      return {
+        id: g.gamePk,
+        away: g.teams?.away?.team?.name || "Away",
+        home: g.teams?.home?.team?.name || "Home",
+        awayAbbr: g.teams?.away?.team?.abbreviation || "AWY",
+        homeAbbr: g.teams?.home?.team?.abbreviation || "HME",
+        awayPitcher: g.teams?.away?.probablePitcher?.fullName || null,
+        awayPitcherId: g.teams?.away?.probablePitcher?.id || null,
+        homePitcher: g.teams?.home?.probablePitcher?.fullName || null,
+        homePitcherId: g.teams?.home?.probablePitcher?.id || null,
+        time: g.gameDate ? new Date(g.gameDate).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZoneName:"short"}) : "TBD",
+        awayPlayers,
+        homePlayers,
+        hasLineup: awayPlayers.length > 0 && homePlayers.length > 0,
+        isLive: ["Live", "In Progress"].includes(g.status?.abstractGameState) || g.status?.statusCode === "I",
+        isFinal: g.status?.abstractGameState === "Final",
+      };
+    });
+
+    // Render games - hide live/final, show per-team lineup status
+    document.getElementById("games-list").innerHTML = games
+      .filter(g => !g.isLive && !g.isFinal)
+      .map(g => {
+        const awayConfirmed = g.awayPlayers.length > 0;
+        const homeConfirmed = g.homePlayers.length > 0;
+        const awayStatus = awayConfirmed
+          ? `<span class="lineup-yes">● ${g.away}</span>`
+          : `<span class="lineup-no">○ ${g.away}</span>`;
+        const homeStatus = homeConfirmed
+          ? `<span class="lineup-yes">● ${g.home}</span>`
+          : `<span class="lineup-no">○ ${g.home}</span>`;
+        return `
+        <div class="game-row">
+          <div class="game-teams">
+            <div class="game-matchup">${g.away} <span style="color:#2a2a3a">@</span> ${g.home}</div>
+            <div class="game-pitchers">${g.awayPitcher||"TBD"} <span style="color:#222">vs</span> ${g.homePitcher||"TBD"}</div>
+            <div class="lineup-status" style="margin-top:4px;display:flex;gap:10px">${awayStatus} ${homeStatus}</div>
+          </div>
+          <div class="game-time">${g.time}</div>
+        </div>`;
+      }).join("") || `<div class="empty">All games are live or final.</div>`;
+
+    // Collect pitchers
+    const pitchers = [];
+    for (const g of games) {
+      if (g.awayPitcherId) pitchers.push({id:g.awayPitcherId, name:g.awayPitcher, team:g.away, abbr:g.awayAbbr});
+      if (g.homePitcherId) pitchers.push({id:g.homePitcherId, name:g.homePitcher, team:g.home, abbr:g.homeAbbr});
+    }
+
+    if (!pitchers.length) {
+      showWarn("No probable pitchers announced yet.");
+      renderEmpty("pitcher-list","No starters announced.");
+      renderEmpty("alerts","Waiting on pitchers and lineups.");
+      finish(); return;
+    }
+
+    setProgress(`Fetching stats for ${pitchers.length} pitchers...`);
+    const ranked = await Promise.all(pitchers.map(async p => {
+      const info = await fetchPitcher(p.id);
+      const score = info ? calcScore({sbRate:info.sbRate, pitcherCSRate:info.csRate, runnerSBPct:0.72, isRHP:info.isRHP, catcherCSPct:0.28}) : null;
+      return {...p, info, score};
+    }));
+    ranked.sort((a,b)=>(b.score??0)-(a.score??0));
+
+    // Render pitcher rankings
+    document.getElementById("pitcher-list").innerHTML = ranked.length === 0
+      ? `<div class="empty">No starters found</div>`
+      : ranked.map((p,i) => {
+          const {color} = scoreStyle(p.score??0);
+          return `
+          <div class="pitcher-row" data-search="${(p.name + ' ' + p.team).toLowerCase()}">
+            <div class="pitcher-rank">${i+1}</div>
+            <div class="pitcher-info">
+              <div class="pitcher-name">${p.name} ${handBadge(p.info?.hand)}</div>
+              <div class="pitcher-team">${p.team}</div>
+            </div>
+            <div class="pitcher-score-wrap">
+              <div class="pitcher-score" style="color:${color}">${p.score??'—'}</div>
+              <div class="bar"><div class="bar-fill" style="width:${p.score??0}%;background:${color}"></div></div>
+              <div class="pitcher-stats">${p.info?`${p.info.sbAllowed??0} SB · ${Math.round((p.info.csRate??0)*100)}% CS`:'no data'}</div>
+            </div>
+          </div>`;
+        }).join("");
+
+    // ── Alerts: only when pitcher + lineup + catcher all confirmed ──────────
+    setProgress("Scanning confirmed lineups...");
+    const alertList = [];
+
+    for (const game of games) {
+      // Skip live, final, or games without confirmed lineups
+      if (game.isLive || game.isFinal || !game.hasLineup) continue;
+
+      const matchups = [
+        {batters: game.awayPlayers, pitcherId: game.homePitcherId, defPlayers: game.homePlayers},
+        {batters: game.homePlayers, pitcherId: game.awayPitcherId, defPlayers: game.awayPlayers},
+      ];
+
+      for (const {batters, pitcherId, defPlayers} of matchups) {
+        // Must have confirmed pitcher
+        const pitcher = ranked.find(p=>p.id===pitcherId);
+        if (!pitcher?.info) continue;
+
+        // Must find starting catcher
+        setProgress("Finding starting catchers...");
+        const catcherId = await findStartingCatcher(defPlayers);
+        if (!catcherId) continue; // skip if catcher not confirmed
+
+        const catcherInfo = await fetchCatcher(catcherId);
+        if (!catcherInfo) continue;
+
+        // Now scan batters
+        for (const batter of batters.slice(0,9)) {
+          const runner = await fetchRunner(batter.id);
+          if (!runner || runner.sb < 3) continue;
+
+          // Career H2H
+          const h2h = await fetchCareerH2H(batter.id, pitcherId);
+
+          // Situation-specific OBP: pitcher vs batter's hand, batter vs pitcher's hand
+          const batterHand = runner.batHand;
+          const pitcherHand = pitcher.info.hand;
+          const effectiveBatHand = batterHand === "S" ? (pitcherHand === "R" ? "L" : "R") : batterHand;
+          const pitcherOBPvsBatter = effectiveBatHand === "L" ? pitcher.info.obpVsL : pitcher.info.obpVsR;
+          const batterOBPvsPitcher = pitcherHand === "L" ? runner.obpVsL : runner.obpVsR;
+          const matchupOBPScore = calcMatchupOBP(pitcherOBPvsBatter, batterOBPvsPitcher, h2h.obp, h2h.pa);
+          const obpBreakdown = {
+            pitcherOBP: pitcherOBPvsBatter,
+            pitcherLabel: `Pitcher vs ${effectiveBatHand === "L" ? "LHB" : "RHB"}`,
+            batterOBP: batterOBPvsPitcher,
+            batterLabel: `Batter vs ${pitcherHand === "L" ? "LHP" : "RHP"}`,
+            careerOBP: h2h.obp,
+            careerAB: h2h.ab,
+            careerBB: h2h.bb,
+            careerPA: h2h.pa,
+          };
+
+          const score = calcScore({
+            sbRate: pitcher.info.sbRate,
+            pitcherCSRate: pitcher.info.csRate,
+            runnerSBPct: runner.sbPct,
+            isRHP: pitcher.info.isRHP,
+            catcherCSPct: catcherInfo.csPct ?? 0.28,
+            matchupOBP: matchupOBPScore,
+          });
+
+          if (score >= 55) {
+            alertList.push({
+              runner: batter.fullName, runnerSB: runner.sb, runnerCS: runner.cs, runnerSBPct: runner.sbPct, gameTime: game.time,
+              runnerTeam: batters === game.awayPlayers ? game.awayAbbr : game.homeAbbr,
+              pitcher: pitcher.name, pitcherLastName: pitcher.name.split(" ").pop(),
+              pitcherTeam: pitcher.abbr || pitcher.team, pitcherHand: pitcher.info.hand,
+              pitcherSBAllowed: pitcher.info.sbAllowed, pitcherCSRate: pitcher.info.csRate, pitcherCSForced: pitcher.info.csForced,
+              catcher: catcherInfo.name, catcherCS: catcherInfo.cs, catcherSB: catcherInfo.sb, catcherCSPct: catcherInfo.csPct,
+              matchupOBPScore, h2hPA: h2h.pa, h2hAB: h2h.ab, h2hBB: h2h.bb, h2hHits: h2h.hits,
+              obpBreakdown,
+              score,
+            });
+          }
+        }
+      }
+    }
+
+    alertList.sort((a,b)=>b.score-a.score);
+
+    const alertsEl = document.getElementById("alerts");
+    if (!alertList.length) {
+      const hasAnyLineup = games.some(g=>g.hasLineup);
+      alertsEl.innerHTML = `<div class="empty">${
+        !hasAnyLineup
+          ? "Lineups not posted yet — alerts appear once pitcher, lineup & catcher are all confirmed."
+          : "No steal opportunities meeting threshold in today's confirmed lineups."
+      }</div>`;
+    } else {
+      alertsEl.innerHTML = alertList.map((a,i) => {
+        const {color, bg} = scoreStyle(a.score);
+        const catcherAttempts = (a.catcherCS||0) + (a.catcherSB||0);
+        const catcherRaw = catcherAttempts > 0 ? `${a.catcherCS||0}/${catcherAttempts}` : "—";
+        const catcherPct = catcherAttempts > 0 ? ` (${Math.round((a.catcherCSPct??0)*100)}%)` : "";
+        const pitcherAttempts = (a.pitcherSBAllowed||0) + (a.pitcherCSForced||0);
+        const pitcherRaw = pitcherAttempts > 0 ? `${a.pitcherCSForced||0}/${pitcherAttempts}` : `${a.pitcherSBAllowed??'—'} SB`;
+        const mobp = a.matchupOBPScore ?? null;
+        const mobpColor = mobp == null ? "#aaa" : mobp >= 70 ? "#00a651" : mobp >= 50 ? "#d97700" : "#aaa";
+        const paText = a.h2hAB > 0 ? `${a.h2hHits}/${a.h2hAB} (${a.h2hBB} BB) vs ${a.pitcherLastName}` : "No H2H data";
+        const uid = `obp-${i}`;
+        const bd = a.obpBreakdown || {};
+
+        // Build breakdown rows
+        const pOBP = bd.pitcherOBP;
+        const bOBP = bd.batterOBP;
+        const cOBP = bd.careerOBP;
+        const pNorm = normOBP(pOBP);
+        const bNorm = normOBP(bOBP);
+        const cNorm = normOBP(cOBP);
+        const rowStyle = "display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #eee;font-size:11px;";
+        const lastRowStyle = "display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:11px;";
+
+        const breakdownHTML = `
+          <div id="${uid}" style="display:none;margin-top:8px;background:#f7f7fa;border-radius:8px;padding:8px 10px;border:1px solid #e8e8ee">
+            <div style="${rowStyle}">
+              <span style="color:#555;font-weight:600">${bd.pitcherLabel || 'Pitcher Split'}</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="color:#888">${pOBP != null ? pOBP.toFixed(3) : '—'}</span>
+                <span style="font-weight:700;color:${pNorm != null ? (pNorm>=70?"#00a651":pNorm>=50?"#d97700":"#aaa") : "#aaa"}">${pNorm ?? '—'}</span>
+              </span>
+            </div>
+            <div style="${rowStyle}">
+              <span style="color:#555;font-weight:600">${bd.batterLabel || 'Batter Split'}</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="color:#888">${bOBP != null ? bOBP.toFixed(3) : '—'}</span>
+                <span style="font-weight:700;color:${bNorm != null ? (bNorm>=70?"#00a651":bNorm>=50?"#d97700":"#aaa") : "#aaa"}">${bNorm ?? '—'}</span>
+              </span>
+            </div>
+            <div style="${lastRowStyle}">
+              <span style="color:#555;font-weight:600">Career H2H OBP</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="color:#888">${cOBP != null ? cOBP.toFixed(3) + ` (${bd.careerAB||0}AB ${bd.careerBB||0}BB)` : 'No data'}</span>
+                <span style="font-weight:700;color:${cNorm != null ? (cNorm>=70?"#00a651":cNorm>=50?"#d97700":"#aaa") : "#aaa"}">${cNorm ?? '—'}</span>
+              </span>
+            </div>
+          </div>`;
+
+        return `
+        <div class="alert-card" data-search="${(a.runner + ' ' + a.pitcher + ' ' + a.catcher).toLowerCase()}" style="border-color:${color}2a;background:${bg};animation-delay:${i*0.05}s">
+          <div class="alert-top">
+            <div class="score-circle" style="border-color:${color};color:${color}">${a.score}</div>
+            <div class="alert-title-wrap">
+              <div class="alert-title">
+                ${a.runner} <span class="alert-vs">vs</span> ${a.pitcher} ${handBadge(a.pitcherHand)}
+              </div>
+              <div style="font-size:11px;color:#888;margin-top:3px;font-weight:500">▼ ${a.catcher}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:11px;color:#aaa;font-weight:500">${a.gameTime}</div>
+            </div>
+          </div>
+          <div class="alert-stats">
+            <div class="stat-box">
+              <div class="stat-label">Runner SB</div>
+              <div class="stat-value">${a.runnerSB}/${a.runnerSB + (a.runnerCS||0)}</div>
+              <div class="stat-sub">${Math.round(a.runnerSBPct*100)}% success rate</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Pitcher CS</div>
+              <div class="stat-value">${pitcherRaw}</div>
+              <div class="stat-sub">CS / total attempts</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Catcher CS</div>
+              <div class="stat-value">${catcherRaw}</div>
+              <div class="stat-sub">CS / attempts${catcherPct}</div>
+            </div>
+            <div class="stat-box" onclick="toggleOBP('${uid}')" style="cursor:pointer;user-select:none">
+              <div class="stat-label" style="display:flex;justify-content:space-between">
+                <span>Matchup OBP</span>
+                <span id="${uid}-arrow" style="color:#aaa;font-size:11px">▸</span>
+              </div>
+              <div class="stat-value" style="color:${mobpColor}">${mobp ?? '—'}</div>
+              <div class="stat-sub">${paText}</div>
+              ${breakdownHTML}
+            </div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+  } catch(e) {
+    showWarn("Error loading data: " + e.message);
+  }
+
+  finish();
+}
+
+load();
+</script>
+</body>
+</html>
